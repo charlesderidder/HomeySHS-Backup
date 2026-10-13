@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  homey-backup.sh  (v2)
+#  Homey-backup.sh  (v2)
 #  Backup, verificatie en restore van Homey Self-Hosted Server (/root/.homey-shs)
 #  in een Proxmox LXC-container. Draai dit script als root op de Proxmox HOST.
 #
 #  DRAAIEN VANAF GITHUB (zonder het bestand eerst handmatig te downloaden):
-#    bash <(curl -fsSL https://raw.githubusercontent.com/charlesderidder/HomeySHS-Backup/main/homey-backup.sh) backup
+#    bash <(curl -fsSL https://raw.githubusercontent.com/charlesderidder/HomeySHS-Backup/refs/heads/main/Homey-backup.sh) backup
 #
 #  Of eerst downloaden en daarna draaien (aanbevolen, dan kun je het eerst lezen):
-#    curl -fsSL https://raw.githubusercontent.com/charlesderidder/HomeySHS-Backup/main/homey-backup.sh -o homey-backup.sh
-#    chmod +x homey-backup.sh
-#    ./homey-backup.sh backup
+#    curl -fsSL https://raw.githubusercontent.com/charlesderidder/HomeySHS-Backup/refs/heads/main/Homey-backup.sh -o Homey-backup.sh
+#    chmod +x Homey-backup.sh
+#    ./Homey-backup.sh backup
 #
 #  Commando's:
-#    ./homey-backup.sh backup              # backup maken
-#    ./homey-backup.sh list                # toon beschikbare backups
-#    ./homey-backup.sh verify <bestand>    # controleer een backup (zonder herstel)
-#    ./homey-backup.sh restore <bestand>   # herstel een backup
-#    ./homey-backup.sh help
+#    ./Homey-backup.sh backup              # backup maken
+#    ./Homey-backup.sh list                # toon beschikbare backups
+#    ./Homey-backup.sh verify <bestand>    # controleer een backup (zonder herstel)
+#    ./Homey-backup.sh restore <bestand>   # herstel een backup
+#    ./Homey-backup.sh help
 #
 #  Let op: de container wordt tijdens backup en restore gestopt. Plan dit dus
 #  op een moment dat Homey niet nodig is.
