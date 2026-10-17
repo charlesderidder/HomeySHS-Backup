@@ -291,6 +291,64 @@ cmd_list() {
   return 0
 }
 
+# ---------- menu -------------------------------------------------------------
+interactive_menu() {
+  while true; do
+    cat <<'EOF'
+
+========================================
+ Homey Backup Menu
+========================================
+  1) Backup maken
+  2) Backups tonen
+  3) Backup verifiëren
+  4) Restore uitvoeren
+  5) Help tonen
+  0) Afsluiten
+========================================
+EOF
+    printf 'Maak een keuze [0-5]: '
+    read -r choice || choice=""
+
+    case "$choice" in
+      1)
+        setup_logging "backup"
+        acquire_lock
+        cmd_backup
+        return 0
+        ;;
+      2)
+        cmd_list
+        ;;
+      3)
+        printf 'Pad naar backupbestand: '
+        read -r file || file=""
+        [[ -n "$file" ]] || { warn "Geen bestand opgegeven."; continue; }
+        verify_archive "$file"
+        ;;
+      4)
+        printf 'Pad naar backupbestand: '
+        read -r file || file=""
+        [[ -n "$file" ]] || { warn "Geen bestand opgegeven."; continue; }
+        setup_logging "restore $file"
+        acquire_lock
+        cmd_restore "$file"
+        return 0
+        ;;
+      5)
+        usage
+        ;;
+      0|q|Q|quit|exit)
+        log "Afgesloten."
+        return 0
+        ;;
+      *)
+        warn "Ongeldige keuze: $choice"
+        ;;
+    esac
+  done
+}
+
 # ---------- main -------------------------------------------------------------
 usage() {
   cat <<EOF
@@ -301,6 +359,9 @@ Gebruik: $0 <commando> [bestand]
   verify <bestand>    Controleer een backup zonder te herstellen
   restore <bestand>   Herstel een backup (container wordt gestopt en herstart)
   help                Toon deze hulp
+  menu                Start het interactieve menu
+
+Als je geen commando meegeeft, start het interactieve menu.
 
 Omgevingsvariabelen: CTID, SRC_DIR, BACKUP_DIR, KEEP, MOUNT_CHECK,
                      LOG_FILE, SHUTDOWN_TIMEOUT, ASSUME_YES
@@ -308,15 +369,18 @@ EOF
 }
 
 main() {
-  local cmd="${1:-help}"
+  local cmd="${1:-menu}"
   shift || true
   case "$cmd" in
     backup)  setup_logging "backup"; acquire_lock; cmd_backup ;;
     restore) setup_logging "restore $*"; acquire_lock; cmd_restore "${1:-}" ;;
     verify)  verify_archive "${1:-}" ;;
     list)    cmd_list ;;
+    menu|"")
+      interactive_menu
+      ;;
     help|-h|--help) usage ;;
-    *) die "Onbekend commando: $cmd (gebruik: backup | list | verify | restore | help)" ;;
+    *) die "Onbekend commando: $cmd (gebruik: backup | list | verify | restore | help | menu)" ;;
   esac
 }
 
