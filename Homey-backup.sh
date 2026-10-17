@@ -165,8 +165,46 @@ prune() {
   return 0
 }
 
+# Zoek/kies een backupbestand in BACKUP_DIR als er geen volledig pad is opgegeven
+resolve_backup() {
+  local input="${1:-}" files=() choice i
+
+  # Bestaand pad (absoluut of relatief): direct gebruiken
+  if [[ -n "$input" && -f "$input" ]]; then
+    printf '%s\n' "$input"; return 0
+  fi
+
+  # Alleen een bestandsnaam: zoeken in BACKUP_DIR
+  if [[ -n "$input" && -f "$BACKUP_DIR/$input" ]]; then
+    printf '%s\n' "$BACKUP_DIR/$input"; return 0
+  fi
+  [[ -z "$input" ]] || die "Backup niet gevonden: $input (ook niet in $BACKUP_DIR)"
+
+  # Niets opgegeven: lijst tonen, nieuwste eerst
+  mapfile -t files < <(find "$BACKUP_DIR" -maxdepth 1 -type f \
+      -name "${ARCHIVE_PREFIX}-*.tar.gz" -printf '%T@ %p\n' 2>/dev/null \
+      | sort -rn | cut -d' ' -f2- || true)
+  (( ${#files[@]} > 0 )) || die "Geen backups gevonden in $BACKUP_DIR"
+
+  # Menu naar stderr, zodat alleen het gekozen pad op stdout komt
+  {
+    echo "Beschikbare backups in $BACKUP_DIR:"
+    for i in "${!files[@]}"; do
+      printf '  %d) %s  (%s)\n' "$((i+1))" "$(basename "${files[$i]}")" \
+        "$(du -h "${files[$i]}" | cut -f1)"
+    done
+    printf 'Kies een nummer [1 = nieuwste]: '
+  } >&2
+  read -r choice || choice=""
+  choice="${choice:-1}"
+  [[ "$choice" =~ ^[0-9]+$ ]] && (( choice >= 1 && choice <= ${#files[@]} )) \
+    || die "Ongeldige keuze: $choice"
+  printf '%s\n' "${files[$((choice-1))]}"
+}
+
 verify_archive() {
-  local f="$1" list
+  local f list
+  f="$(resolve_backup "${1:-}")"
   [[ -n "$f" && -f "$f" ]] || die "Geef een bestaand backupbestand op."
 
   if [[ -f "$f.sha256" ]]; then
@@ -252,7 +290,8 @@ cmd_backup() {
 
 # ---------- restore ----------------------------------------------------------
 cmd_restore() {
-  local file="${1:-}"
+  local file
+  file="$(resolve_backup "${1:-}")"
   [[ -n "$file" && -f "$file" ]] || die "Geef een bestaand backupbestand op."
   preflight
   verify_archive "$file"
@@ -321,18 +360,12 @@ EOF
         cmd_list
         ;;
       3)
-        printf 'Pad naar backupbestand: '
-        read -r file || file=""
-        [[ -n "$file" ]] || { warn "Geen bestand opgegeven."; continue; }
-        verify_archive "$file"
+        verify_archive ""
         ;;
       4)
-        printf 'Pad naar backupbestand: '
-        read -r file || file=""
-        [[ -n "$file" ]] || { warn "Geen bestand opgegeven."; continue; }
-        setup_logging "restore $file"
+        setup_logging "restore"
         acquire_lock
-        cmd_restore "$file"
+        cmd_restore ""
         return 0
         ;;
       5)
@@ -356,8 +389,8 @@ Gebruik: $0 <commando> [bestand]
 
   backup              Maak een backup van ${SRC_DIR} in container ${CTID}
   list                Toon beschikbare backups
-  verify <bestand>    Controleer een backup zonder te herstellen
-  restore <bestand>   Herstel een backup (container wordt gestopt en herstart)
+  verify [bestand]    Controleer een backup (zonder bestand: kies uit lijst)
+  restore [bestand]   Herstel een backup (zonder bestand: kies uit lijst)
   help                Toon deze hulp
   menu                Start het interactieve menu
 
